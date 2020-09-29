@@ -2,13 +2,31 @@ import React from "react";
 import { v4 as uuid } from "uuid";
 import { createStore, combineReducers } from "redux";
 import { Provider, connect } from "react-redux";
-import "./App.css"
+import "./App.css";
+
 const reducer = combineReducers({
   activeThreadId: activeThreadIdReducer,
-  threads: threadsReducer
+  loginUserId: loginUserIdReducer,
+  threads: threadsReducer,
+  users: usersReducer,
 });
 
-function activeThreadIdReducer(state = "1-fca2", action) {
+function usersReducer(
+  state = [{ name: "Buzz Aldrin" }, { name: "Michael Collins" }],
+  action
+) {
+  return state;
+}
+
+function loginUserIdReducer(state = "Buzz Aldrin", action) {
+  if (action.type === "SWITCH_USER") {
+    return action.id;
+  } else {
+    return state;
+  }
+}
+
+function activeThreadIdReducer(state = "3-xz25", action) {
   if (action.type === "OPEN_THREAD") {
     return action.id;
   } else {
@@ -41,14 +59,22 @@ function threadsReducer(
       id: "1-fca2",
       title: "Buzz Aldrin",
       friend: "2-be91",
-      messages: messagesReducer(undefined, {})
+      users: [
+        { id: "1-fca2", title: "Buzz Aldrin" },
+        { id: "2-be91", title: "Michael Collins" },
+      ],
+      messages: messagesReducer(undefined, {}),
     },
     {
-      id: "2-be91",
-      title: "Michael Collins",
+      id: "3-xz25",
+      title: "All",
       friend: "1-fca2",
-      messages: messagesReducer(undefined, {})
-    }
+      users: [
+        { id: "1-fca2", title: "Buzz Aldrin" },
+        { id: "2-be91", title: "Michael Collins" },
+      ],
+      messages: messagesReducer(undefined, {}),
+    },
   ],
   action
 ) {
@@ -62,12 +88,12 @@ function threadsReducer(
 
       const newThread = {
         ...oldThread,
-        messages: messagesReducer(oldThread.messages, action)
+        messages: messagesReducer(oldThread.messages, action),
       };
       return [
         ...state.slice(0, threadIndex),
         newThread,
-        ...state.slice(threadIndex + 1, state.length)
+        ...state.slice(threadIndex + 1, state.length),
       ];
     }
     default: {
@@ -81,24 +107,28 @@ function messagesReducer(state = { counter: 0, msg: [] }, action) {
     case "RESET_MESSAGE": {
       return {
         counter: 0,
-        msg: state.msg
+        msg: state.msg.map((msg) =>
+          msg.name !== action.name ? { ...msg, unread: true } : msg
+        ),
       };
     }
     case "ADD_MESSAGE": {
       const newMessage = {
         text: action.text,
+        name: action.user,
         timestamp: Date.now(),
-        id: uuid()
+        id: uuid(),
+        unread: false,
       };
       return {
         counter: state.counter + 1,
-        msg: state.msg.concat(newMessage)
+        msg: state.msg.concat(newMessage),
       };
     }
     case "DELETE_MESSAGE": {
       return {
         counter: state.counter ? state.counter - 1 : state.counter,
-        msg: state.msg.filter((m) => m.id !== action.id)
+        msg: state.msg.filter((m) => m.id !== action.id),
       };
     }
     default: {
@@ -115,90 +145,172 @@ const store = createStore(
 function deleteMessage(id) {
   return {
     type: "DELETE_MESSAGE",
-    id: id
+    id: id,
   };
 }
 
-function resetUnreadmsg(id) {
+function resetUnreadmsg(id, name) {
   return {
     type: "RESET_MESSAGE",
-    id: id
+    id: id,
+    name: name,
   };
 }
 
-function addMessage(text, threadId) {
+function addMessage(text, threadId, userName) {
   return {
     type: "ADD_MESSAGE",
     text: text,
-    threadId: threadId
+    user: userName,
+    threadId: threadId,
   };
 }
 
 function openThread(id) {
   return {
     type: "OPEN_THREAD",
-    id: id
+    id: id,
+  };
+}
+
+function switchUser(id) {
+  return {
+    type: "SWITCH_USER",
+    id: id,
   };
 }
 
 const App = () => (
-  <div className="ui segment">
-    <ThreadTabs />
-    <ThreadDisplay />
+  <div>
+    <LoginSwitch />
+    <div className="ui segment">
+      <ThreadTabs />
+      <ThreadDisplay />
+    </div>
   </div>
 );
 
+class Login extends React.Component {
+  state = {
+    user: this.props.loginUsers[0].userName,
+  };
+  changeUser = (e) => {
+    this.props.user(e.target.value);
+    this.props.default("3-xz25");
+    this.setState({ user: e.target.value });
+  };
+  render() {
+    return (
+      <div>
+        <p>
+          You are currently login: <span>{this.state.user}</span>
+        </p>
+        <label>
+          Change Login User
+          <select
+            value={this.state.user}
+            onChange={this.changeUser}
+            name=""
+            id=""
+          >
+            {this.props.loginUsers.map((u) => (
+              <option key={u.userName} value={u.userName}>
+                {u.userName}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    );
+  }
+}
+
+const mapStateToLoginProps = (state) => {
+  const loginUsers = state.users.map((u) => ({
+    userName: u.name,
+  }));
+  return {
+    loginUsers,
+  };
+};
+
+const mapDispatchToLoginProps = (dispatch) => ({
+  user: (id) => dispatch(switchUser(id)),
+  default: (id) => dispatch(openThread(id)),
+});
+
+const LoginSwitch = connect(
+  mapStateToLoginProps,
+  mapDispatchToLoginProps
+)(Login);
+
 const Tabs = (props) => (
   <div className="ui top attached tabular menu">
-    {props.tabs.map((tab, index) => (
-      <div
-        key={index}
-        className={tab.active ? "active item" : "item"}
-        onClick={() => props.onClick(tab.id)}
-      >
-        {tab.title}
-        <span className={tab.unreadmsg ? "unread" : "read"}>
-          {tab.unreadmsg}
-        </span>
-      </div>
-    ))}
+    {props.tabs.map((tab, index) => {
+      return (
+        <div
+          key={index}
+          className={tab.active ? "active item" : "item"}
+          onClick={() => props.onClick(tab.id)}
+        >
+          {tab.id === "3-xz25"
+            ? "All"
+            : tab.title.find((t) => {
+                if (t.title !== props.login) {
+                  return t.title;
+                }
+                return null;
+              }).title}
+          <span>{tab.unreadmsg}</span>
+        </div>
+      );
+    })}
   </div>
 );
 
 const mapStateToTabsProps = (state) => {
-  const tabs = state.threads.map((t) => ({
-    title: t.title,
-    active: t.id === state.activeThreadId,
-    id: t.id,
-    unreadmsg: t.messages.counter
-  }));
-
+  const login = state.loginUserId;
+  const tabId = state.activeThreadId;
+  const tabs = state.threads
+    .filter((t) => t.users.find((t) => t.title === login))
+    .map((t) => ({
+      title: t.users,
+      active: t.id === state.activeThreadId,
+      id: t.id,
+      unreadmsg: t.messages.msg.reduce(
+        (accu, current) =>
+          current.unread === false && current.name !== login ? accu + 1 : accu,
+        0
+      ),
+    }));
   return {
-    tabs
+    login,
+    tabs,
+    tabId,
   };
 };
 
 const mapDispatchToTabsProps = (dispatch) => ({
-  onClick: (id) => dispatch(openThread(id))
+  onClick: (id) => dispatch(openThread(id)),
 });
 
 const ThreadTabs = connect(mapStateToTabsProps, mapDispatchToTabsProps)(Tabs);
 
 class TextFieldSubmit extends React.Component {
   state = {
-    value: ""
+    value: "",
   };
 
   onChange = (e) => {
     this.setState({
-      value: e.target.value
+      value: e.target.value,
     });
   };
 
   handleSubmit = () => {
     this.props.onSubmit(this.state.value);
     this.setState({
-      value: ""
+      value: "",
     });
   };
 
@@ -223,13 +335,23 @@ const MessageList = (props) => (
     {props.messages.msg.map((m, index) => (
       <div className="comment" key={index} onClick={() => props.onClick(m.id)}>
         <div className="text">
-          {m.text}
+          {m.name}:{m.text}
           <span className="metadata">@{m.timestamp}</span>
         </div>
       </div>
     ))}
     <div
-      className={props.messages.counter ? "unread" : "read"}
+      className={
+        props.messages.msg.reduce(
+          (accu, current) =>
+            current.unread === false && current.name !== props.user
+              ? accu + 1
+              : accu,
+          0
+        )
+          ? "unread"
+          : "read"
+      }
       onClick={() => props.onRead()}
     >
       I READ ALL MSG
@@ -241,21 +363,30 @@ const Thread = (props) => (
   <div className="ui center aligned basic segment">
     <MessageList
       messages={props.thread.messages}
+      user={props.userId}
       onClick={props.onMessageClick}
-      onRead={() => props.onRead(props.thread.id)}
+      onRead={() => props.onRead(props.thread.id, props.userId)}
     />
     <TextFieldSubmit onSubmit={props.onMessageSubmit} />
   </div>
 );
 
 const mapStateToThreadProps = (state) => ({
-  thread: state.threads.find((t) => t.id === state.activeThreadId)
+  thread: state.threads.find((t) => {
+    if (
+      t.id === state.activeThreadId &&
+      t.users.find((u) => u.title === state.loginUserId)
+    ) {
+      return t;
+    }
+  }),
+  userId: state.loginUserId,
 });
 
 const mapDispatchToThreadProps = (dispatch) => ({
   onMessageClick: (id) => dispatch(deleteMessage(id)),
-  onRead: (id) => dispatch(resetUnreadmsg(id)),
-  dispatch: dispatch
+  onRead: (id, name) => dispatch(resetUnreadmsg(id, name)),
+  dispatch: dispatch,
 });
 
 function mergeThreadProps(stateProps, dispatchProps) {
@@ -263,7 +394,9 @@ function mergeThreadProps(stateProps, dispatchProps) {
     ...stateProps,
     ...dispatchProps,
     onMessageSubmit: (text) =>
-      dispatchProps.dispatch(addMessage(text, stateProps.thread.friend))
+      dispatchProps.dispatch(
+        addMessage(text, stateProps.thread.id, stateProps.userId)
+      ),
   };
 }
 
