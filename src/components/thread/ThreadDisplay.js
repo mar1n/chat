@@ -38,7 +38,7 @@ class TextFieldSubmit extends React.Component {
 
 const MessageList = (props) => (
   <div className="ui comments">
-    {props.messages.msg.map((m, index) => (
+    {props.messages.map((m, index) => (
       <div className="comment" key={index} onClick={() => props.onClick(m.id)}>
         <div className="text">
           {m.name}:{m.text}
@@ -48,7 +48,7 @@ const MessageList = (props) => (
     ))}
     <div
       className={
-        props.messages.msg.reduce(
+        props.messages.reduce(
           (accu, current) =>
             current.unread === false && current.name !== props.user
               ? accu + 1

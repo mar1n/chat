@@ -35,3 +35,17 @@ export function switchUser(id) {
     id: id,
   };
 }
+
+export function openNewUserThread() {
+  return {
+    type: "ADD_NEWUSER",
+  };
+}
+
+export function addThread(user1, user2) {
+  return {
+    type: "ADD_NEWTHREAD",
+    user1: user1,
+    user2: user2,
+  };
+}
