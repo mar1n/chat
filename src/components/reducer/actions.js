@@ -49,3 +49,9 @@ export function addThread(user1, user2) {
     user2: user2,
   };
 }
+
+export function closeThread() {
+  return {
+    type: "CLOSE_THREAD",
+  };
+}

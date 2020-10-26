@@ -65,17 +65,18 @@ const MessageList = (props) => (
   </div>
 );
 
-const Thread = (props) => (
-  <div className="ui center aligned basic segment">
-    <MessageList
-      messages={props.thread.messages}
-      user={props.userId}
-      onClick={props.onMessageClick}
-      onRead={() => props.onRead(props.thread.id, props.userId)}
-    />
-    <TextFieldSubmit onSubmit={props.onMessageSubmit} />
-  </div>
-);
+const Thread = (props) =>
+  props.close && (
+    <div className="ui center aligned basic segment">
+      <MessageList
+        messages={props.thread.messages}
+        user={props.userId}
+        onClick={props.onMessageClick}
+        onRead={() => props.onRead(props.thread.id, props.userId)}
+      />
+      <TextFieldSubmit onSubmit={props.onMessageSubmit} />
+    </div>
+  );
 
 const mapStateToThreadProps = (state) => ({
   thread: state.threads.find((t) => {
@@ -88,6 +89,7 @@ const mapStateToThreadProps = (state) => ({
     return null;
   }),
   userId: state.loginUserId,
+  close: state.closeThread,
 });
 
 const mapDispatchToThreadProps = (dispatch) => ({

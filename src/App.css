@@ -9,3 +9,10 @@
 .read {
   display: none;
 }
+.close {
+  width: 10px;
+  height: 10px;
+  right: 0;
+  position: absolute;
+  background-color: green;
+}

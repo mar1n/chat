@@ -5,9 +5,21 @@ const reducer = combineReducers({
   activeThreadId: activeThreadIdReducer,
   loginUserId: loginUserIdReducer,
   newThread: newThreadReducer,
+  closeThread: closeThreadReducer,
   threads: threadsReducer,
   users: usersReducer,
 });
+
+function closeThreadReducer(state = true, action) {
+  if (action.type === "CLOSE_THREAD") {
+    console.log("close Thread");
+    return false;
+  } else if (action.type === "OPEN_THREAD") {
+    return true;
+  } else {
+    return state;
+  }
+}
 
 function newThreadReducer(state = true, action) {
   if (action.type === "ADD_NEWUSER") {
@@ -54,7 +66,7 @@ function findThreadIndex(threads, action) {
     }
     case "DELETE_MESSAGE": {
       return threads.findIndex((t) =>
-        t.messages.msg.find((m) => m.id === action.id)
+        t.messages.find((m) => m.id === action.id)
       );
     }
     default: {
